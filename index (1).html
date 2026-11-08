@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Event Horizon — Live Quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#050509;
+    --panel:#0b0d16;
+    --panel-2:#11131f;
+    --panel-3:#171b2a;
+    --hairline: rgba(232,166,74,0.16);
+    --hairline-strong: rgba(232,166,74,0.42);
+    --gold:#e8a64a;
+    --gold-bright:#ffd28a;
+    --wheat:#c9a15f;
+    --green: #6fbf5a;
+    --green-bright: #97e07f;
+    --ink:#f4efe2;
+    --ink-dim:#948e7e;
+    --ink-faint:#5c584c;
+    --danger:#c9705a;
+    --serif: 'Spectral', Georgia, 'Times New Roman', serif;
+    --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  html{ scroll-padding-top: env(safe-area-inset-top, 0px); height:100%; }
+  *,*::before,*::after{ box-sizing:inherit; }
+  body{
+    margin:0; height:100%; min-height:100vh;
+    background: var(--void);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size:15px;
+    line-height:1.5;
+    overflow-x:hidden;
+    position:relative;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; }
+  }
+
+  /* ---------- cosmic backdrop ---------- */
+  #backdrop{ position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden;
+    background:
+      radial-gradient(ellipse 1000px 700px at 82% -8%, rgba(232,166,74,0.09), transparent 60%),
+      radial-gradient(ellipse 900px 900px at 8% 108%, rgba(201,161,95,0.06), transparent 60%),
+      radial-gradient(circle at 50% 45%, #0a0c15 0%, #050509 72%);
+  }
+  #stars{ position:absolute; inset:0; }
+  #stars span{ position:absolute; background:var(--ink); border-radius:50%; opacity:0.55; }
+
+  .gargantua{ position:fixed; z-index:1; border-radius:50%; pointer-events:none;
+    transition: width 1.1s cubic-bezier(.22,.9,.3,1), height 1.1s cubic-bezier(.22,.9,.3,1),
+                top 1.1s cubic-bezier(.22,.9,.3,1), left 1.1s cubic-bezier(.22,.9,.3,1),
+                right 1.1s cubic-bezier(.22,.9,.3,1), transform 1.1s cubic-bezier(.22,.9,.3,1), opacity .8s ease;
+  }
+  .gargantua .disk{ position:absolute; inset:-38%; border-radius:50%;
+    background: conic-gradient(from 0deg, transparent 0deg, rgba(232,166,74,.05) 40deg, var(--gold-bright) 92deg, var(--gold) 118deg, rgba(232,166,74,.06) 165deg, transparent 210deg, rgba(201,161,95,.35) 265deg, var(--gold) 300deg, transparent 340deg, transparent 360deg);
+    filter: blur(7px);
+    animation: spin 130s linear infinite;
+    opacity:.85;
+  }
+  .gargantua .disk-thin{ position:absolute; inset:-14%; border-radius:50%;
+    background: conic-gradient(from 40deg, transparent 0deg, var(--gold-bright) 30deg, transparent 70deg, transparent 210deg, var(--gold) 250deg, transparent 300deg);
+    filter: blur(2px);
+    animation: spin 80s linear infinite reverse;
+    opacity:.9;
+  }
+  .gargantua .horizon{ position:absolute; inset:18%; border-radius:50%; background: #010102;
+    box-shadow: 0 0 40px 6px rgba(0,0,0,0.9) inset, 0 0 60px 10px rgba(232,166,74,.12);
+  }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  body.phase-lobby .gargantua{ width:min(46vw,420px); height:min(46vw,420px); top:9%; left:50%; right:auto; transform:translateX(-50%); opacity:1; }
+  body.phase-question .gargantua, body.phase-reveal .gargantua{ width:96px; height:96px; top:calc(20px + env(safe-area-inset-top,0px)); right:20px; left:auto; transform:none; opacity:.9; }
+  body.phase-end .gargantua{ width:min(30vw,260px); height:min(30vw,260px); top:10%; left:50%; right:auto; transform:translateX(-50%); opacity:1; }
+  body.gate .gargantua{ width:min(38vw,320px); height:min(38vw,320px); top:8%; left:50%; right:auto; transform:translateX(-50%); opacity:.9; }
+
+  /* ---------- layout shell ---------- */
+  #app{ position:relative; z-index:2; min-height:100%; }
+  a{ color:inherit; }
+  button{ font-family:inherit; }
+  .hidden{ display:none !important; }
+
+  .btn{
+    font-family:var(--mono); font-size:12.5px; letter-spacing:.02em; font-weight:600;
+    color:var(--ink); background:var(--panel-2); border:1px solid var(--hairline);
+    padding:10px 16px; border-radius:4px; cursor:pointer; transition: border-color .15s ease, color .15s ease, background .15s ease;
+  }
+  .btn:hover{ border-color:var(--hairline-strong); color:var(--gold-bright); }
+  .btn:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+  .btn:disabled{ opacity:.35; cursor:not-allowed; }
+  .btn-primary{ background:linear-gradient(180deg, rgba(232,166,74,.18), rgba(232,166,74,.08)); border-color:var(--hairline-strong); color:var(--gold-bright); }
+  .btn-primary:hover{ border-color:var(--gold); color:#fff; }
+  .btn-danger{ color:var(--danger); }
+  .btn-danger:hover{ border-color:var(--danger); color:#e8907c; }
+  .btn-ghost{ background:transparent; }
+  .btn-small{ padding:6px 10px; font-size:11.5px; }
+  .btn-icon{ padding:6px 9px; font-size:13px; line-height:1; }
+  .btn-link{ background:none; border:none; color:var(--ink-dim); text-decoration:underline; cursor:pointer; font-family:var(--mono); font-size:11.5px; padding:4px; }
+  .btn-link:hover{ color:var(--gold-bright); }
+
+  input[type=text], input[type=password], textarea{
+    width:100%; font-family:var(--serif); font-size:15px; color:var(--ink);
+    background:var(--panel-2); border:1px solid var(--hairline); border-radius:4px;
+    padding:10px 12px; resize:vertical; transition:border-color .15s ease;
+  }
+  input[type=text]:focus, input[type=password]:focus, textarea:focus{ outline:none; border-color:var(--gold); }
+  label{ display:block; font-family:var(--mono); font-size:11.5px; color:var(--ink-dim); margin-bottom:6px; letter-spacing:.02em; }
+
+  /* =====================================================
+     LOADING / LOGIN GATE
+  ===================================================== */
+  .center-stage{ min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:32px 20px; gap:18px; }
+  .eyebrow{ font-family:var(--mono); font-size:12px; color:var(--wheat); letter-spacing:.03em; margin:0; }
+  .stage-title{ font-family:var(--serif); font-weight:500; font-size:clamp(1.5rem,4vw,2.4rem); max-width:20ch; margin:0; color:var(--ink); }
+  .stage-sub{ font-family:var(--mono); font-size:13px; color:var(--ink-dim); max-width:44ch; margin:0; }
+
+  .login-form{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:6px; }
+  .login-form input{ width:230px; text-align:center; letter-spacing:.08em; }
+  .login-error{ color:var(--danger); font-family:var(--mono); font-size:12px; margin:0; }
+
+  /* =====================================================
+     VIEWER / DISPLAY STAGE
+  ===================================================== */
+  .stage-wrap{ min-height:100vh; display:flex; flex-direction:column; }
+  .stage{ flex:1; display:flex; flex-direction:column; justify-content:center; max-width:1600px; margin:0 auto; padding:4vh 6vw; width:100%; }
+  .stage .meta{ font-family:var(--mono); font-size:clamp(14px,1.6vw,20px); color:var(--wheat); letter-spacing:.02em; margin:0 0 2.2vh; }
+  .question-text{ font-family:var(--serif); font-weight:500; font-size:clamp(2.2rem,5vw,4.6rem); line-height:1.2; margin:0 0 4vh; color:var(--ink); }
+  .timer{ margin:0 0 4vh; width:100%; }
+  .timer-top{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:1.2vh; }
+  .timer-label{ font-family:var(--mono); font-size:clamp(13px,1.3vw,18px); color:var(--wheat); letter-spacing:.04em; }
+  .timer-count{ font-family:var(--mono); font-size:clamp(20px,2.4vw,30px); color:var(--gold-bright); font-weight:700; letter-spacing:.02em; text-shadow:0 0 14px rgba(255,210,138,.55); }
+  .timer-track{ width:100%; height:clamp(16px,2vw,26px); border-radius:999px; background:var(--void); border:1px solid var(--hairline-strong); overflow:hidden; box-shadow:inset 0 2px 4px rgba(0,0,0,.6); }
+  .timer-fill{ height:100%; width:100%; background:linear-gradient(90deg, #f5b542, var(--gold-bright), #fff2cc); box-shadow:0 0 16px 2px rgba(255,210,138,.65), 0 0 4px rgba(255,210,138,.9) inset; border-radius:999px; transition: width .2s linear, background .3s ease; }
+  .timer-fill.is-low{ background:linear-gradient(90deg, var(--danger), #e8905a, #ffcf7d); animation: timerPulse 1s ease-in-out infinite; }
+  @keyframes timerPulse{ 0%,100%{ box-shadow:0 0 16px 2px rgba(201,112,90,.55);} 50%{ box-shadow:0 0 26px 6px rgba(201,112,90,.9);} }
+  .timer-paused-tag{ color:var(--danger); font-weight:600; }
+
+  .choices{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:clamp(14px,1.8vw,24px) clamp(16px,2.2vw,28px); }
+  .choices.choices-stack{ grid-template-columns:1fr; }
+  @media (max-width:480px){ .choices{ grid-template-columns:1fr; } }
+  .choice{ display:flex; align-items:center; gap:clamp(14px,1.8vw,22px); padding:clamp(20px,2.4vw,32px) clamp(22px,2.6vw,34px); border:1px solid var(--hairline); border-radius:8px; background:var(--panel); transition: border-color .5s ease, background .5s ease, opacity .5s ease, transform .4s ease; }
+  .choice-letter{ font-family:var(--mono); font-weight:700; font-size:clamp(15px,1.6vw,20px); color:var(--wheat); border:1px solid var(--hairline-strong); border-radius:50%; width:clamp(32px,3.4vw,46px); height:clamp(32px,3.4vw,46px); min-width:clamp(32px,3.4vw,46px); display:flex; align-items:center; justify-content:center; }
+  .choice-text{ font-family:var(--serif); font-size:clamp(1.15rem,2.2vw,1.8rem); color:var(--ink); }
+  .choice.is-correct{ border-color:var(--green); background:linear-gradient(90deg, rgba(111,191,90,.18), rgba(111,191,90,.05)); animation: correctPulse 1.1s ease; }
+  .choice.is-correct .choice-letter{ background:var(--green); color:#0c1a08; border-color:var(--green); }
+  .choice.is-correct .choice-text{ color:var(--green-bright); }
+  .choice.is-muted{ opacity:.4; }
+  @keyframes correctPulse{ 0%{ box-shadow:0 0 0 0 rgba(111,191,90,.5);} 100%{ box-shadow:0 0 0 16px rgba(111,191,90,0);} }
+  .reveal-note{ margin-top:clamp(20px,2.4vw,32px); font-family:var(--mono); font-size:clamp(13px,1.4vw,18px); color:var(--green-bright); }
+  .stage-footer{ text-align:center; padding:18px; font-family:var(--mono); font-size:11px; color:var(--ink-faint); letter-spacing:.02em; }
+
+  /* preview (smaller, embedded in admin) */
+  .preview{ transform-origin: top left; }
+  .preview .stage{ padding:26px 22px 24px; max-width:none; }
+  .preview .question-text{ font-size:1.05rem; margin-bottom:18px; }
+  .preview .choice{ padding:9px 12px; }
+  .preview .choice-text{ font-size:.82rem; }
+  .preview .choice-letter{ width:20px; height:20px; min-width:20px; font-size:10.5px; }
+  .preview .meta{ font-size:10.5px; margin-bottom:10px; }
+  .preview .stage-title{ font-size:1.2rem; }
+  .preview .timer{ margin-bottom:16px; width:100%; }
+  .preview .timer-top{ margin-bottom:6px; }
+  .preview .timer-label{ font-size:9px; }
+  .preview .timer-count{ font-size:12px; text-shadow:none; }
+  .preview .timer-track{ height:9px; border-radius:5px; }
+
+  /* =====================================================
+     ADMIN — MISSION CONTROL
+  ===================================================== */
+  .admin-shell{ min-height:100vh; display:flex; flex-direction:column; }
+  .admin-header{ display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    padding:20px 26px; border-bottom:1px solid var(--hairline); }
+  .admin-header h1{ font-family:var(--serif); font-weight:500; font-size:1.3rem; margin:0; color:var(--ink); }
+  .admin-header .brand-sub{ font-family:var(--mono); font-size:11px; color:var(--ink-dim); margin-top:2px; }
+  .status-pill{ font-family:var(--mono); font-size:11.5px; color:var(--gold-bright); border:1px solid var(--hairline-strong); border-radius:20px; padding:6px 14px; white-space:nowrap; }
+  .header-actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+  .admin-main{ flex:1; padding:22px 26px 26px; }
+  .admin-grid{ display:grid; gap:18px;
+    grid-template-columns: 380px 1fr;
+    grid-template-areas: "compose flow" "preview flow" "controls controls";
+  }
+  @media (max-width: 900px){
+    .admin-grid{ grid-template-columns: 1fr; grid-template-areas: "compose" "preview" "flow" "controls"; }
+  }
+  .panel{ background:var(--panel); border:1px solid var(--hairline); border-radius:6px; padding:20px; }
+  .panel-title{ font-family:var(--mono); font-size:11.5px; color:var(--wheat); letter-spacing:.03em; margin:0 0 16px; }
+  .area-compose{ grid-area:compose; }
+  .area-preview{ grid-area:preview; overflow:hidden; padding:0; }
+  .area-preview .panel-title{ padding:16px 20px 0; }
+  .area-preview .preview-inner{ border-top:1px solid var(--hairline); margin-top:14px; min-height:220px; background:var(--void); }
+  .area-flow{ grid-area:flow; display:flex; flex-direction:column; }
+  .timer-controls-inline{ border-top:1px solid var(--hairline); margin-top:14px; padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .area-controls{ grid-area:controls; display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+  .controls-row-label{ font-family:var(--mono); font-size:11px; color:var(--ink-dim); letter-spacing:.02em; }
+  .controls-cluster{ display:flex; gap:10px; flex-wrap:wrap; }
+
+  .field{ margin-bottom:14px; }
+  .choice-field{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .choice-field .radio-wrap{ display:flex; align-items:center; justify-content:center; width:26px; height:26px; min-width:26px; }
+  .choice-field input[type=radio]{ width:16px; height:16px; accent-color: var(--green); }
+  .choice-field label.letter{ font-family:var(--mono); font-weight:700; font-size:12px; color:var(--wheat); width:20px; min-width:20px; margin:0; }
+  .compose-actions{ display:flex; gap:10px; margin-top:6px; }
+  .form-hint{ font-family:var(--mono); font-size:11px; color:var(--ink-faint); margin:2px 0 14px; }
+
+  .flow-list{ flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; max-height:520px; }
+  .flow-empty{ font-family:var(--mono); font-size:12.5px; color:var(--ink-faint); padding:30px 10px; text-align:center; }
+  .flow-item{ border:1px solid var(--hairline); border-radius:5px; padding:12px 14px; display:flex; align-items:flex-start; gap:12px; transition:border-color .2s ease, background .2s ease; }
+  .flow-item.is-live{ border-color:var(--gold); background:linear-gradient(90deg, rgba(232,166,74,.09), transparent); }
+  .flow-index{ font-family:var(--mono); font-size:11px; color:var(--ink-faint); min-width:20px; padding-top:2px; }
+  .flow-body{ flex:1; min-width:0; }
+  .flow-text{ font-family:var(--serif); font-size:.95rem; color:var(--ink); margin:0 0 4px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+  .flow-meta{ font-family:var(--mono); font-size:10.5px; color:var(--ink-dim); }
+  .flow-live-tag{ color:var(--gold-bright); }
+  .flow-actions{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+
+  .toast{ position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--panel-3); border:1px solid var(--hairline-strong);
+    color:var(--ink); font-family:var(--mono); font-size:12.5px; padding:10px 18px; border-radius:5px; z-index:50; opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s ease; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(-6px); }
+
+  .readonly-banner{ font-family:var(--mono); font-size:12px; color:var(--danger); border:1px solid rgba(201,112,90,.4); border-radius:5px; padding:10px 14px; margin-bottom:16px; }
+
+  ::selection{ background:rgba(232,166,74,.35); }
+  ::-webkit-scrollbar{ width:10px; }
+  ::-webkit-scrollbar-thumb{ background:var(--panel-3); border-radius:6px; }
+</style>
+</head>
+<body class="loading gate">
+<div id="backdrop"><div id="stars"></div></div>
+<div class="gargantua" aria-hidden="true"><div class="disk"></div><div class="disk-thin"></div><div class="horizon"></div></div>
+
+<div id="app">
+  <!-- LOADING -->
+  <div id="view-loading" class="center-stage">
+    <p class="eyebrow">Establishing link</p>
+    <h1 class="stage-title">Reaching across the horizon…</h1>
+  </div>
+
+  <!-- LOGIN GATE (shared markup, configured per page mode) -->
+  <div id="view-login" class="center-stage hidden">
+    <p class="eyebrow" id="login-eyebrow">Event Horizon</p>
+    <h1 class="stage-title" id="login-title">Enter the access code</h1>
+    <p class="stage-sub" id="login-sub">Ask the host for tonight's code.</p>
+    <form id="login-form" class="login-form">
+      <input type="password" id="login-password" placeholder="Access code" autocomplete="off" required>
+      <button type="submit" class="btn btn-primary">Enter</button>
+    </form>
+    <p class="login-error hidden" id="login-error">That code didn't match. Try again.</p>
+  </div>
+
+  <!-- VIEWER / DISPLAY -->
+  <div id="view-viewer" class="stage-wrap hidden">
+    <div id="viewer-stage"></div>
+    <div class="stage-footer">EVENT HORIZON · LIVE QUIZ &nbsp;·&nbsp; <button class="btn-link" id="btn-viewer-logout">switch code</button></div>
+  </div>
+
+  <!-- ADMIN -->
+  <div id="view-admin" class="admin-shell hidden">
+    <header class="admin-header">
+      <div>
+        <h1>Mission Control</h1>
+        <div class="brand-sub">Event Horizon — Live Quiz</div>
+      </div>
+      <div class="header-actions">
+        <span class="status-pill" id="status-pill">—</span>
+        <span id="sync-status" style="font-size:12px;opacity:.75;align-self:center">Sync: starting…</span>
+        <button class="btn" id="btn-copy-link">Copy audience link</button>
+        <button class="btn btn-ghost" id="btn-copy-admin-link">Copy this admin link</button>
+        <button class="btn btn-ghost" id="btn-admin-logout">Log out</button>
+      </div>
+    </header>
+
+    <main class="admin-main">
+      <div id="readonly-banner" class="readonly-banner hidden">This session can't be saved right now — check your connection and try again.</div>
+
+      <div class="admin-grid">
+        <section class="panel area-compose">
+          <p class="panel-title" id="compose-title">Compose a question</p>
+          <form id="compose-form">
+            <div class="field">
+              <label for="q-text">Question</label>
+              <textarea id="q-text" rows="3" maxlength="240" placeholder="What warps time near a singularity?" required></textarea>
+            </div>
+            <div class="field">
+              <label for="q-timer">Timer for this question (seconds)</label>
+              <input type="text" inputmode="numeric" id="q-timer" maxlength="3" placeholder="30" value="30" required>
+              <p class="form-hint">Sets how long the yellow bar runs once this question goes live. 5–300 seconds.</p>
+            </div>
+            <div class="field" id="choice-fields"></div>
+            <p class="form-hint">Mark the correct choice with the dot beside it.</p>
+            <div class="compose-actions">
+              <button type="submit" class="btn btn-primary" id="btn-save-question">Add to sequence</button>
+              <button type="button" class="btn btn-ghost hidden" id="btn-cancel-edit">Cancel</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel area-preview">
+          <p class="panel-title">Audience is seeing</p>
+          <div class="preview-inner">
+            <div id="admin-preview" class="preview"></div>
+          </div>
+        </section>
+
+        <section class="panel area-flow">
+          <p class="panel-title">Question flow</p>
+          <div class="flow-list" id="flow-list"></div>
+          <div class="timer-controls-inline">
+            <span class="controls-row-label">Emergency timer controls — the clock starts on its own; use these only if you need to override it</span>
+            <div class="controls-cluster">
+              <button class="btn btn-small" id="btn-timer-start">▶ Start</button>
+              <button class="btn btn-small" id="btn-timer-stop">⏸ Stop</button>
+              <button class="btn btn-small btn-ghost" id="btn-timer-reset">↺ Reset</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="area-controls">
+          <div class="controls-cluster">
+            <button class="btn" id="btn-prev">◂ Previous</button>
+            <button class="btn btn-primary" id="btn-reveal">Reveal answer</button>
+            <button class="btn" id="btn-next">Next ▸</button>
+          </div>
+          <div class="controls-cluster">
+            <button class="btn" id="btn-start">Start quiz</button>
+            <button class="btn btn-ghost" id="btn-lobby">Return to lobby</button>
+            <button class="btn btn-danger" id="btn-reset">Clear all questions</button>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  var LETTERS = ['A','B','C','D'];
+  var DEFAULT_TIMER = 30;
+  var STORAGE_KEY = 'eh_quiz_state_v1';
+  var CHANNEL_NAME = 'eh_quiz_channel_v1';
+
+  var VIEWER_PASSWORD = 'STARDUST';
+  var ADMIN_PASSWORD = 'SINGULARITY-7';
+  var AUTH_KEY_VIEWER = 'eh_auth_viewer_v1';
+  var AUTH_KEY_ADMIN = 'eh_auth_admin_v1';
+
+  var params = new URLSearchParams(location.search);
+  var mode = params.get('role') === 'admin' ? 'admin' : 'viewer';
+  var ROOM = (params.get('room') || '').trim().toUpperCase();   // audience/SceneSwitch link carries the room code
+  var PEER_PREFIX = 'eh-';
+  function getRoom(){
+    var c = null;
+    try{
+      c = localStorage.getItem('eh_room');
+      if(!c){
+        var a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; c = '';
+        for(var i=0;i<6;i++) c += a[Math.floor(Math.random()*a.length)];
+        localStorage.setItem('eh_room', c);
+      }
+    }catch(e){ c = c || 'EH0001'; }
+    return c;
+  }
+
+  function uid(){
+    if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'q_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+  }
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function defaultState(){
+    return { questions: [], currentIndex: -1, revealed: false, phase: 'lobby', currentStartedAt: null, timerRunning: true, timerRemaining: null };
+  }
+  function cloneState(s){ return JSON.parse(JSON.stringify(s)); }
+
+  // ---------- starfield ----------
+  (function stars(){
+    var el = document.getElementById('stars');
+    var frag = [];
+    for(var i=0;i<140;i++){
+      var x = Math.random()*100, y = Math.random()*100;
+      var size = Math.random()<0.85 ? 1 : 2;
+      var op = (0.25 + Math.random()*0.5).toFixed(2);
+      frag.push('<span style="left:'+x+'%;top:'+y+'%;width:'+size+'px;height:'+size+'px;opacity:'+op+'"></span>');
+    }
+    el.innerHTML = frag.join('');
+  })();
+
+  // ---------- stores ----------
+  function LocalStore(){
+    this.listeners = [];
+    this.channel = ('BroadcastChannel' in window) ? new BroadcastChannel(CHANNEL_NAME) : null;
+    this.state = this._read();
+    var self = this;
+    if(this.channel){
+      this.channel.onmessage = function(e){ self.state = e.data; self._notify(); };
+    }
+    window.addEventListener('storage', function(e){
+      if(e.key === STORAGE_KEY && e.newValue){
+        try{ self.state = JSON.parse(e.newValue); self._notify(); }catch(err){}
+      }
+    });
+  }
+  LocalStore.prototype._read = function(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : defaultState();
+    }catch(e){ return defaultState(); }
+  };
+  LocalStore.prototype.subscribe = function(fn){
+    this.listeners.push(fn); fn(this.state);
+    var self = this;
+    return function(){ self.listeners = self.listeners.filter(function(l){ return l!==fn; }); };
+  };
+  LocalStore.prototype._notify = function(){ this.listeners.forEach(function(fn){ fn(this.state); }, this); };
+  LocalStore.prototype.set = function(newState){
+    this.state = newState;
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(newState)); }catch(e){}
+    if(this.channel){ this.channel.postMessage(newState); }
+    this._notify();
+    return Promise.resolve();
+  };
+
+  // Viewer side: receives the quiz state live from the admin page (works inside SceneSwitch and across PCs)
+  function RemoteStore(room){
+    this.listeners = [];
+    this.state = defaultState();
+    this.ready = true;
+    var self = this, peer = null, conn = null, dialAt = 0;
+    function dial(){
+      dialAt = Date.now();
+      conn = peer.connect(PEER_PREFIX + room, { reliable: true });
+      conn.on('data', function(d){ if(d && Array.isArray(d.questions)){ self.state = d; self._notify(); } });
+      conn.on('close', function(){ conn = null; });
+    }
+    function connect(){
+      if(conn && (conn.open || Date.now() - dialAt < 8000)) return;
+      if(!peer || peer.destroyed || peer.disconnected){
+        try{ if(peer) peer.destroy(); }catch(e){}
+        peer = new Peer(); peer.on('open', dial); peer.on('error', function(){}); return;
+      }
+      dial();
+    }
+    if(typeof Peer !== 'undefined'){ connect(); setInterval(connect, 3000); }
+  }
+  RemoteStore.prototype.subscribe = function(fn){
+    this.listeners.push(fn); fn(this.state);
+    var self = this;
+    return function(){ self.listeners = self.listeners.filter(function(l){ return l!==fn; }); };
+  };
+  RemoteStore.prototype._notify = function(){ this.listeners.forEach(function(fn){ fn(this.state); }, this); };
+  RemoteStore.prototype.set = function(){ return Promise.reject(new Error('read-only')); };
+
+  // Admin side: shares every change with all connected viewers
+  var hostAttached = false;
+  function attachHost(local){
+    if(hostAttached) return; hostAttached = true;
+    var statusEl = document.getElementById('sync-status'), conns = [];
+    function status(t){ if(statusEl) statusEl.textContent = 'Sync: ' + t; }
+    function online(){ status('online \u00b7 ' + conns.length + ' display(s)'); }
+    if(typeof Peer === 'undefined'){ status('offline (no internet)'); return; }
+    var peer = new Peer(PEER_PREFIX + getRoom());
+    peer.on('open', online);
+    peer.on('error', function(e){ status(e.type==='unavailable-id' ? 'open in another tab' : 'problem, retrying'); });
+    peer.on('disconnected', function(){ status('reconnecting'); setTimeout(function(){ try{ peer.reconnect(); }catch(e){} }, 2000); });
+    peer.on('connection', function(c){
+      c.on('open', function(){ conns.push(c); c.send(local.state); online(); });
+      c.on('close', function(){ conns = conns.filter(function(x){ return x!==c; }); online(); });
+    });
+    var origSet = local.set.bind(local);
+    local.set = function(st){
+      var r = origSet(st);
+      conns.forEach(function(c){ if(c.open) c.send(st); });
+      return r;
+    };
+  }
+
+  function DbStore(doc){
+    this.doc = doc;
+    this.listeners = [];
+    this.state = defaultState();
+    this.ready = false;
+    var self = this;
+    this.unsub = doc.onSnapshot(function(snap){
+      self.state = (snap.exists && snap.data()) ? snap.data() : defaultState();
+      self.ready = true;
+      self._notify();
+    }, function(err){ console.error('db snapshot error', err); });
+  }
+  DbStore.prototype.subscribe = function(fn){
+    this.listeners.push(fn); if(this.ready) fn(this.state);
+    var self = this;
+    return function(){ self.listeners = self.listeners.filter(function(l){ return l!==fn; }); };
+  };
+  DbStore.prototype._notify = function(){ this.listeners.forEach(function(fn){ fn(this.state); }, this); };
+  DbStore.prototype.set = function(newState){
+    var self = this;
+    this.state = newState;
+    return this.doc.set(newState).catch(function(err){
+      console.error('write failed', err);
+      throw err;
+    });
+  };
+
+  // ---------- state transitions ----------
+  function addQuestion(state, q){ var c = cloneState(state); c.questions.push(q); return c; }
+  function replaceQuestion(state, id, patch){
+    var c = cloneState(state);
+    var idx = c.questions.findIndex(function(q){ return q.id===id; });
+    if(idx<0) return state;
+    c.questions[idx] = Object.assign({}, c.questions[idx], patch);
+    return c;
+  }
+  function deleteQuestion(state, id){
+    var c = cloneState(state);
+    var idx = c.questions.findIndex(function(q){ return q.id===id; });
+    if(idx<0) return state;
+    c.questions.splice(idx,1);
+    if(c.currentIndex === idx){ c.currentIndex = -1; c.revealed = false; c.phase = 'lobby'; }
+    else if(c.currentIndex > idx){ c.currentIndex -= 1; }
+    return c;
+  }
+  function moveQuestion(state, id, dir){
+    var c = cloneState(state);
+    var idx = c.questions.findIndex(function(q){ return q.id===id; });
+    var newIdx = idx + dir;
+    if(idx<0 || newIdx<0 || newIdx>=c.questions.length) return state;
+    var liveId = c.currentIndex>=0 ? c.questions[c.currentIndex].id : null;
+    var item = c.questions.splice(idx,1)[0];
+    c.questions.splice(newIdx,0,item);
+    if(liveId){ c.currentIndex = c.questions.findIndex(function(q){ return q.id===liveId; }); }
+    return c;
+  }
+  function goLive(state, id){
+    var c = cloneState(state);
+    var idx = c.questions.findIndex(function(q){ return q.id===id; });
+    if(idx<0) return state;
+    c.currentIndex = idx; c.revealed = false; c.phase = 'question'; c.currentStartedAt = Date.now();
+    c.timerRunning = true; c.timerRemaining = null;
+    return c;
+  }
+  function startQuiz(state){
+    if(state.questions.length===0) return state;
+    var c = cloneState(state);
+    c.currentIndex = 0; c.revealed = false; c.phase = 'question'; c.currentStartedAt = Date.now();
+    c.timerRunning = true; c.timerRemaining = null;
+    return c;
+  }
+  function nextQuestion(state){
+    var c = cloneState(state);
+    if(c.currentIndex+1 >= c.questions.length){ c.phase='end'; c.currentStartedAt = null; }
+    else {
+      c.currentIndex += 1; c.revealed=false; c.phase='question'; c.currentStartedAt = Date.now();
+      c.timerRunning = true; c.timerRemaining = null;
+    }
+    return c;
+  }
+  function prevQuestion(state){
+    if(state.currentIndex<=0) return state;
+    var c = cloneState(state);
+    c.currentIndex -= 1; c.revealed=false; c.phase='question'; c.currentStartedAt = Date.now();
+    c.timerRunning = true; c.timerRemaining = null;
+    return c;
+  }
+  function toLobby(state){ var c = cloneState(state); c.currentIndex=-1; c.revealed=false; c.phase='lobby'; return c; }
+  function revealAnswer(state){ var c = cloneState(state); c.revealed=true; c.phase='reveal'; return c; }
+  function hideAnswer(state){ var c = cloneState(state); c.revealed=false; c.phase='question'; return c; }
+  function clearAll(){ return defaultState(); }
+
+  function currentQuestionDuration(state){
+    var q = state.questions[state.currentIndex];
+    if(!q) return DEFAULT_TIMER;
+    return normalizeQuestion(q).timerSeconds;
+  }
+  function pauseTimer(state){
+    if(state.phase!=='question' || state.timerRunning===false) return state;
+    var c = cloneState(state);
+    var duration = currentQuestionDuration(c);
+    var elapsed = (Date.now() - (c.currentStartedAt || Date.now())) / 1000;
+    c.timerRemaining = Math.max(0, duration - elapsed);
+    c.timerRunning = false;
+    return c;
+  }
+  function resumeTimer(state){
+    if(state.phase!=='question' || state.timerRunning!==false) return state;
+    var c = cloneState(state);
+    var duration = currentQuestionDuration(c);
+    var remaining = (typeof c.timerRemaining === 'number') ? c.timerRemaining : duration;
+    var elapsed = duration - remaining;
+    c.currentStartedAt = Date.now() - elapsed * 1000;
+    c.timerRunning = true;
+    c.timerRemaining = null;
+    return c;
+  }
+  function resetTimerAction(state){
+    if(state.phase!=='question') return state;
+    var c = cloneState(state);
+    c.currentStartedAt = Date.now();
+    c.timerRunning = true;
+    c.timerRemaining = null;
+    return c;
+  }
+
+  // ---------- rendering: viewer stage (shared by full viewer + admin preview) ----------
+  function normalizeQuestion(q){
+    var choices = (q.choices || []).slice(0, 4);
+    while(choices.length < 4) choices.push('');
+    var correctIndex = (typeof q.correctIndex === 'number' && q.correctIndex >= 0 && q.correctIndex < 4) ? q.correctIndex : 0;
+    return { id: q.id, text: q.text || '', choices: choices, correctIndex: correctIndex, timerSeconds: q.timerSeconds || DEFAULT_TIMER };
+  }
+  function renderStageHTML(state){
+    if(state.phase==='lobby'){
+      var msg = state.questions.length ? 'The session is ready. Waiting for launch.' : 'Waiting for the first transmission';
+      return '<div class="stage"><p class="eyebrow">Standing by</p><h1 class="stage-title">'+msg+'</h1></div>';
+    }
+    if(state.phase==='end'){
+      return '<div class="stage"><p class="eyebrow">Transmission complete</p><h1 class="stage-title">That was the last question.</h1></div>';
+    }
+    var q = state.questions[state.currentIndex];
+    if(!q){
+      return '<div class="stage"><p class="eyebrow">Standing by</p><h1 class="stage-title">Waiting for the first transmission</h1></div>';
+    }
+    q = normalizeQuestion(q);
+    var revealed = !!state.revealed;
+    var maxChoiceLen = Math.max.apply(null, q.choices.map(function(c){ return c.length; }));
+    var choicesClass = 'choices' + (maxChoiceLen > 42 ? ' choices-stack' : '');
+    var choicesHtml = q.choices.map(function(c, i){
+      var cls = 'choice';
+      if(revealed) cls += (i===q.correctIndex ? ' is-correct' : ' is-muted');
+      return '<li class="'+cls+'"><span class="choice-letter">'+LETTERS[i]+'</span><span class="choice-text">'+escapeHtml(c)+'</span></li>';
+    }).join('');
+    var html = '<div class="stage">';
+    html += '<p class="meta">Question '+(state.currentIndex+1)+' of '+state.questions.length+'</p>';
+    html += '<h1 class="question-text">'+escapeHtml(q.text)+'</h1>';
+    if(state.phase==='question'){
+      var duration = q.timerSeconds || DEFAULT_TIMER;
+      var running = state.timerRunning !== false;
+      var remainingAttr = (typeof state.timerRemaining === 'number') ? state.timerRemaining : '';
+      html += '<div class="timer" data-duration="'+duration+'" data-started="'+(state.currentStartedAt||0)+'" data-running="'+(running?1:0)+'" data-remaining="'+remainingAttr+'">' +
+        '<div class="timer-top"><span class="timer-label">Time remaining'+(running?'':' <span class="timer-paused-tag">· paused</span>')+'</span><span class="timer-count">'+duration+'s</span></div>' +
+        '<div class="timer-track"><div class="timer-fill" style="width:100%"></div></div>' +
+      '</div>';
+    }
+    html += '<ul class="'+choicesClass+'">'+choicesHtml+'</ul>';
+    if(revealed){ html += '<p class="reveal-note">Correct answer — '+LETTERS[q.correctIndex]+'</p>'; }
+    html += '</div>';
+    return html;
+  }
+
+  // ---------- beep-beep when the countdown ends ----------
+  var BEEP_ON_ADMIN_PREVIEW = false;   // set true if the admin page should also beep
+  var audioCtx = null;
+  function unlockAudio(){
+    try{
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if(!AC) return;
+      if(!audioCtx) audioCtx = new AC();
+      if(audioCtx.state === 'suspended') audioCtx.resume();
+    }catch(e){}
+  }
+  // Browsers only allow sound after a user interaction, so unlock on the first click/tap/key
+  ['pointerdown','click','touchstart','keydown'].forEach(function(ev){
+    document.addEventListener(ev, unlockAudio, { passive:true });
+  });
+  function playBeepBeep(){
+    unlockAudio();
+    if(!audioCtx) return;
+    try{
+      var t0 = audioCtx.currentTime + 0.05;
+      [0, 0.3].forEach(function(offset){
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = 1000;
+        var start = t0 + offset, end = start + 0.18;
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(0.25, start + 0.01);
+        gain.gain.setValueAtTime(0.25, end - 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, end);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(start); osc.stop(end + 0.02);
+      });
+    }catch(e){}
+  }
+
+  function mountStage(container, state){
+    container.innerHTML = renderStageHTML(state);
+    if(container._timerInterval){ clearInterval(container._timerInterval); container._timerInterval = null; }
+    var timerEl = container.querySelector('.timer');
+    if(!timerEl) return;
+    var duration = parseFloat(timerEl.getAttribute('data-duration')) || DEFAULT_TIMER;
+    var running = timerEl.getAttribute('data-running') === '1';
+    var startedAt = parseFloat(timerEl.getAttribute('data-started')) || Date.now();
+    var fixedRemaining = parseFloat(timerEl.getAttribute('data-remaining'));
+    var fillEl = timerEl.querySelector('.timer-fill');
+    var countEl = timerEl.querySelector('.timer-count');
+    function computeRemaining(){
+      if(running){
+        var elapsed = (Date.now() - startedAt) / 1000;
+        return Math.max(0, duration - elapsed);
+      }
+      return isNaN(fixedRemaining) ? duration : Math.max(0, fixedRemaining);
+    }
+    var prevRemaining = null, beeped = false;
+    function tick(){
+      var remaining = computeRemaining();
+      // beep once, only when a running countdown actually reaches zero (not when joining after it ended)
+      if(running && !beeped && prevRemaining !== null && prevRemaining > 0 && remaining <= 0){
+        beeped = true;
+        if(mode === 'viewer' || BEEP_ON_ADMIN_PREVIEW) playBeepBeep();
+      }
+      prevRemaining = remaining;
+      var pct = duration > 0 ? (remaining / duration) * 100 : 0;
+      fillEl.style.width = pct + '%';
+      fillEl.classList.toggle('is-low', remaining <= duration * 0.25);
+      countEl.textContent = Math.ceil(remaining) + 's';
+    }
+    tick();
+    if(running){
+      container._timerInterval = setInterval(tick, 200);
+    }
+  }
+
+  // ---------- app bootstrap ----------
+  var elLoading = document.getElementById('view-loading');
+  var elLogin = document.getElementById('view-login');
+  var elViewer = document.getElementById('view-viewer');
+  var elAdmin = document.getElementById('view-admin');
+  var viewerStage = document.getElementById('viewer-stage');
+  var adminPreview = document.getElementById('admin-preview');
+  var statusPill = document.getElementById('status-pill');
+  var toastEl = document.getElementById('toast');
+  var readonlyBanner = document.getElementById('readonly-banner');
+
+  var store = null;
+  var canWrite = false;
+  var editingId = null;
+  var unsubscribe = null;
+
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function(){ toastEl.classList.remove('show'); }, 2200);
+  }
+
+  function setBodyPhase(phase, gateMode){
+    document.body.className = '';
+    if(gateMode) document.body.classList.add('gate');
+    if(phase) document.body.classList.add('phase-' + phase);
+  }
+
+  function statusLabel(state){
+    if(state.phase==='lobby') return state.questions.length ? 'Standing by · ' + state.questions.length + ' queued' : 'Standing by';
+    if(state.phase==='end') return 'Complete';
+    if(state.phase==='reveal') return 'Live · Q'+(state.currentIndex+1)+'/'+state.questions.length+' · revealed';
+    return 'Live · Q'+(state.currentIndex+1)+'/'+state.questions.length;
+  }
+
+  function showView(name){
+    elLoading.classList.add('hidden');
+    elLogin.classList.add('hidden');
+    elViewer.classList.add('hidden');
+    elAdmin.classList.add('hidden');
+    if(name==='loading') elLoading.classList.remove('hidden');
+    if(name==='login') elLogin.classList.remove('hidden');
+    if(name==='viewer') elViewer.classList.remove('hidden');
+    if(name==='admin') elAdmin.classList.remove('hidden');
+  }
+
+  function render(state){
+    if(mode==='admin'){
+      setBodyPhase(null, false);
+      showView('admin');
+      renderAdmin(state);
+    } else {
+      setBodyPhase(state.phase, false);
+      showView('viewer');
+      mountStage(viewerStage, state);
+    }
+  }
+
+  // ================= ADMIN RENDERING =================
+  var choiceFieldsEl = document.getElementById('choice-fields');
+  function buildChoiceFields(values, correctIndex){
+    values = values || ['','','',''];
+    var html = '';
+    for(var i=0;i<4;i++){
+      html += '<div class="choice-field">' +
+        '<span class="letter">'+LETTERS[i]+'</span>' +
+        '<div class="radio-wrap"><input type="radio" name="correct" value="'+i+'" id="correct-'+i+'" '+(correctIndex===i?'checked':'')+'></div>' +
+        '<input type="text" data-choice="'+i+'" maxlength="120" placeholder="Choice '+LETTERS[i]+'" value="'+escapeHtml(values[i]||'')+'" required>' +
+        '</div>';
+    }
+    choiceFieldsEl.innerHTML = html;
+  }
+  buildChoiceFields();
+
+  var composeForm = document.getElementById('compose-form');
+  var composeTitle = document.getElementById('compose-title');
+  var btnSaveQuestion = document.getElementById('btn-save-question');
+  var btnCancelEdit = document.getElementById('btn-cancel-edit');
+  var flowList = document.getElementById('flow-list');
+
+  function resetComposeForm(){
+    editingId = null;
+    document.getElementById('q-text').value = '';
+    document.getElementById('q-timer').value = String(DEFAULT_TIMER);
+    buildChoiceFields();
+    composeTitle.textContent = 'Compose a question';
+    btnSaveQuestion.textContent = 'Add to sequence';
+    btnCancelEdit.classList.add('hidden');
+  }
+
+  function beginEdit(q){
+    q = normalizeQuestion(q);
+    editingId = q.id;
+    document.getElementById('q-text').value = q.text;
+    document.getElementById('q-timer').value = String(q.timerSeconds || DEFAULT_TIMER);
+    buildChoiceFields(q.choices, q.correctIndex);
+    composeTitle.textContent = 'Edit question';
+    btnSaveQuestion.textContent = 'Save changes';
+    btnCancelEdit.classList.remove('hidden');
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function renderAdmin(state){
+    statusPill.textContent = statusLabel(state);
+    mountStage(adminPreview, state);
+
+    readonlyBanner.classList.toggle('hidden', canWrite);
+
+    if(!state.questions.length){
+      flowList.innerHTML = '<div class="flow-empty">No questions yet. Compose the first one on the left.</div>';
+    } else {
+      flowList.innerHTML = state.questions.map(function(rawQ, idx){
+        var q = normalizeQuestion(rawQ);
+        var isLive = idx === state.currentIndex;
+        var tag = isLive ? '<span class="flow-live-tag">● live now</span>' : '';
+        return '<div class="flow-item '+(isLive?'is-live':'')+'" data-id="'+q.id+'">' +
+          '<div class="flow-index">'+(idx+1)+'</div>' +
+          '<div class="flow-body">' +
+            '<p class="flow-text">'+escapeHtml(q.text)+'</p>' +
+            '<p class="flow-meta">Correct: '+LETTERS[q.correctIndex]+' &nbsp;·&nbsp; '+q.timerSeconds+'s &nbsp; '+tag+'</p>' +
+          '</div>' +
+          '<div class="flow-actions">' +
+            '<button class="btn btn-icon" data-act="up" title="Move up">↑</button>' +
+            '<button class="btn btn-icon" data-act="down" title="Move down">↓</button>' +
+            '<button class="btn btn-small" data-act="golive">Go live</button>' +
+            '<button class="btn btn-small" data-act="edit">Edit</button>' +
+            '<button class="btn btn-small btn-danger" data-act="delete">Delete</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    document.getElementById('btn-prev').disabled = !canWrite || state.currentIndex<=0;
+    document.getElementById('btn-next').disabled = !canWrite || (state.phase==='lobby' && !state.questions.length) || state.phase==='end';
+    document.getElementById('btn-start').disabled = !canWrite || !state.questions.length;
+    var revealBtn = document.getElementById('btn-reveal');
+    revealBtn.disabled = !canWrite || (state.phase!=='question' && state.phase!=='reveal');
+    revealBtn.textContent = state.revealed ? 'Hide answer' : 'Reveal answer';
+
+    var timerActive = state.phase==='question';
+    var timerRunning = state.timerRunning !== false;
+    document.getElementById('btn-timer-start').disabled = !canWrite || !timerActive || timerRunning;
+    document.getElementById('btn-timer-stop').disabled = !canWrite || !timerActive || !timerRunning;
+    document.getElementById('btn-timer-reset').disabled = !canWrite || !timerActive;
+  }
+
+  function commit(newState, successMsg){
+    if(!canWrite){ showToast("Can't save right now."); return; }
+    if(newState === store.state){ return; }
+    store.set(newState).then(function(){
+      if(successMsg) showToast(successMsg);
+    }).catch(function(){
+      showToast('Could not save — check your connection and try again.');
+    });
+  }
+
+  // ---------- admin-only event wiring ----------
+  function wireAdminEvents(){
+    composeForm.addEventListener('submit', function(e){
+      e.preventDefault();
+      if(!canWrite) return;
+      var text = document.getElementById('q-text').value.trim();
+      var timerRaw = parseInt(document.getElementById('q-timer').value, 10);
+      var timerSeconds = isNaN(timerRaw) ? DEFAULT_TIMER : Math.min(300, Math.max(5, timerRaw));
+      var inputs = choiceFieldsEl.querySelectorAll('[data-choice]');
+      var choices = [];
+      inputs.forEach(function(inp){ choices[+inp.getAttribute('data-choice')] = inp.value.trim(); });
+      var correctRadio = choiceFieldsEl.querySelector('input[name=correct]:checked');
+      if(!text || choices.length < 4 || choices.some(function(c){ return !c; })){
+        showToast('Fill in the question and all four choices.');
+        return;
+      }
+      if(!correctRadio){
+        showToast('Mark which choice is correct.');
+        return;
+      }
+      var correctIndex = +correctRadio.value;
+      if(editingId){
+        commit(replaceQuestion(store.state, editingId, { text: text, choices: choices, correctIndex: correctIndex, timerSeconds: timerSeconds }), 'Question updated.');
+      } else {
+        commit(addQuestion(store.state, { id: uid(), text: text, choices: choices, correctIndex: correctIndex, timerSeconds: timerSeconds }), 'Question added to the sequence.');
+      }
+      resetComposeForm();
+    });
+    btnCancelEdit.addEventListener('click', resetComposeForm);
+
+    flowList.addEventListener('click', function(e){
+      var btn = e.target.closest('button[data-act]');
+      if(!btn || !canWrite) return;
+      var item = e.target.closest('.flow-item');
+      var id = item.getAttribute('data-id');
+      var act = btn.getAttribute('data-act');
+      var q = store.state.questions.find(function(x){ return x.id===id; });
+      if(act==='up') commit(moveQuestion(store.state, id, -1));
+      else if(act==='down') commit(moveQuestion(store.state, id, 1));
+      else if(act==='golive') commit(goLive(store.state, id), 'Now live.');
+      else if(act==='edit') beginEdit(q);
+      else if(act==='delete'){
+        if(editingId===id) resetComposeForm();
+        commit(deleteQuestion(store.state, id), 'Question deleted.');
+      }
+    });
+
+    document.getElementById('btn-start').addEventListener('click', function(){ commit(startQuiz(store.state), 'Quiz started.'); });
+    document.getElementById('btn-prev').addEventListener('click', function(){ commit(prevQuestion(store.state)); });
+    document.getElementById('btn-next').addEventListener('click', function(){
+      var next = nextQuestion(store.state);
+      commit(next, next.phase==='end' ? 'Sequence complete.' : null);
+    });
+    document.getElementById('btn-reveal').addEventListener('click', function(){
+      commit(store.state.revealed ? hideAnswer(store.state) : revealAnswer(store.state));
+    });
+    document.getElementById('btn-lobby').addEventListener('click', function(){ commit(toLobby(store.state), 'Returned to lobby.'); });
+    document.getElementById('btn-timer-start').addEventListener('click', function(){ commit(resumeTimer(store.state), 'Timer resumed.'); });
+    document.getElementById('btn-timer-stop').addEventListener('click', function(){ commit(pauseTimer(store.state), 'Timer stopped.'); });
+    document.getElementById('btn-timer-reset').addEventListener('click', function(){ commit(resetTimerAction(store.state), 'Timer reset.'); });
+    document.getElementById('btn-reset').addEventListener('click', function(){
+      if(confirm('Clear every question and reset the session? This cannot be undone.')){
+        commit(clearAll(), 'Session cleared.');
+        resetComposeForm();
+      }
+    });
+    document.getElementById('btn-copy-link').addEventListener('click', function(){
+      var url = location.origin + location.pathname + '?room=' + getRoom();
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(url).then(function(){ showToast('Audience link copied.'); },
+          function(){ showToast(url); });
+      } else {
+        showToast(url);
+      }
+    });
+    document.getElementById('btn-copy-admin-link').addEventListener('click', function(){
+      var url = location.origin + location.pathname + '?role=admin';
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(url).then(function(){ showToast('Admin link copied.'); },
+          function(){ showToast(url); });
+      } else {
+        showToast(url);
+      }
+    });
+    document.getElementById('btn-admin-logout').addEventListener('click', function(){
+      try{ localStorage.removeItem(AUTH_KEY_ADMIN); }catch(e){}
+      location.reload();
+    });
+  }
+
+  // ---------- login gate ----------
+  function isAuthedFor(m){
+    if(m==='viewer' && ROOM) return true;   // display link needs no access code
+    try{
+      return localStorage.getItem(m==='admin' ? AUTH_KEY_ADMIN : AUTH_KEY_VIEWER) === '1';
+    }catch(e){ return false; }
+  }
+  function setAuthedFor(m){
+    try{ localStorage.setItem(m==='admin' ? AUTH_KEY_ADMIN : AUTH_KEY_VIEWER, '1'); }catch(e){}
+  }
+  function updateUrlForMode(m){
+    try{
+      var url = new URL(location.href);
+      if(m==='admin') url.searchParams.set('role','admin'); else url.searchParams.delete('role');
+      history.replaceState(null, '', url.toString());
+    }catch(e){}
+  }
+  function configureLoginCopy(){
+    if(mode==='admin'){
+      document.getElementById('login-eyebrow').textContent = 'Mission Control';
+      document.getElementById('login-title').textContent = 'Enter the admin passcode';
+      document.getElementById('login-sub').textContent = "This unlocks the controls that run the whole session.";
+    } else {
+      document.getElementById('login-eyebrow').textContent = 'Event Horizon';
+      document.getElementById('login-title').textContent = 'Enter the access code';
+      document.getElementById('login-sub').textContent = 'Ask the host for tonight\u2019s code.';
+    }
+  }
+  function wireLoginForm(){
+    var form = document.getElementById('login-form');
+    var input = document.getElementById('login-password');
+    var errorEl = document.getElementById('login-error');
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      var value = input.value.trim();
+      var matchedMode = null;
+      if(value === ADMIN_PASSWORD) matchedMode = 'admin';
+      else if(value === VIEWER_PASSWORD) matchedMode = 'viewer';
+
+      if(matchedMode){
+        mode = matchedMode;
+        setAuthedFor(mode);
+        updateUrlForMode(mode);
+        errorEl.classList.add('hidden');
+        beginApp();
+      } else {
+        errorEl.classList.remove('hidden');
+        input.value = '';
+        input.focus();
+      }
+    });
+  }
+
+  document.getElementById('btn-viewer-logout').addEventListener('click', function(){
+    try{ localStorage.removeItem(AUTH_KEY_VIEWER); }catch(e){}
+    location.reload();
+  });
+
+  // ---------- boot ----------
+  function connectStore(){
+    var getDb = (window.claude && window.claude.use) ? window.claude.use('db').catch(function(){ return null; }) : Promise.resolve(null);
+    getDb.then(function(dbCap){
+      if(dbCap){
+        store = new DbStore(dbCap.doc('quiz/session'));
+      } else if(mode==='viewer' && ROOM){
+        store = new RemoteStore(ROOM);
+      } else {
+        store = new LocalStore();
+        if(mode==='admin') attachHost(store);
+      }
+      canWrite = (mode==='admin');
+      showView(mode==='admin' ? 'admin' : 'viewer');
+      if(unsubscribe) unsubscribe();
+      unsubscribe = store.subscribe(render);
+    });
+  }
+
+  function beginApp(){
+    showView('loading');
+    connectStore();
+  }
+
+  function init(){
+    wireAdminEvents();
+    wireLoginForm();
+    if(isAuthedFor(mode)){
+      beginApp();
+    } else {
+      configureLoginCopy();
+      showView('login');
+      document.getElementById('login-password').focus();
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
